@@ -34,11 +34,15 @@ app.get('/urls/new', (req, res) => {
 });
 
 app.post('/urls', (req, res) => {
-  console.log(req.body);
   //res.send('Ok');
   const shortURL = generateRandomString();
   urlDatabase[shortURL] = req.body.longURL;
   res.redirect(`http://localhost:${PORT}/urls/${shortURL}`);
+});
+
+app.post('/urls/:shortURL/delete', (req, res) => {
+  delete urlDatabase[req.params.shortURL];
+  res.redirect('/urls');
 });
 
 app.get("/u/:shortURL", (req, res) => {
