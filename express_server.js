@@ -5,8 +5,16 @@ const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
 };
+const bodyParser = require('body-parser');
+
+app.use(bodyParser.urlencoded({extended: true}));
 
 app.set('view engine', 'ejs');
+
+function generateRandomString() {
+  let r = Math.random().toString(36).substring(7);
+  return r;
+};
 
 app.get('/', (req, res) => {
   res.send('Hello!');
@@ -19,6 +27,15 @@ app.get('/urls.json', (req, res) => {
 app.get('/urls', (req, res) => {
   const templateVar = {urls: urlDatabase};
   res.render('urls_index', templateVar);
+});
+
+app.get('/urls/new', (req, res) => {
+  res.render('urls_new');
+});
+
+app.post('/urls', (req, res) => {
+  console.log(req.body);
+  res.send('Ok');
 });
 
 app.get('/urls/:shortURL', (req, res) => {
