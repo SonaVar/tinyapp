@@ -1,5 +1,6 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const {generateRandomString, getUser, authenticateUser, authenticatePass} = require('./helper_functions');
 const app = express();
 app.use(cookieParser());
 const PORT = 8080;
@@ -8,6 +9,19 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = { 
+  "jack": {
+    id: "id01", 
+    email: "Jack@example.com", 
+    password: "purple-monkey-dinosaur"
+  },
+ "jill": {
+    id: "id02", 
+    email: "Jill@example.com", 
+    password: "dishwasher-funk"
+  }
+}
+
 //Use body parser to parse the request body
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({extended: true}));
@@ -15,18 +29,14 @@ app.use(bodyParser.urlencoded({extended: true}));
 //Set the view engine as embedded JS
 app.set('view engine', 'ejs');
 
-//Generate a randome string as shortURL when creating a new url entry
-function generateRandomString() {
-  let r = Math.random().toString(36).substring(7);
-  return r;
-};
+///////////////////////////GET METHODS//////////////////////////////////////////
 
 //Send 'Hello!' to browser at '/'
 app.get('/', (req, res) => {
   res.send('Hello!');
   //Cookies that have not been signed
   console.log('Cookies: ', req.cookies);
-
+  
   //Cookies that have been signed
   console.log('Signed cookies: ', req.signedCookies);
 });
@@ -36,36 +46,32 @@ app.get('/urls.json', (req, res) => {
   res.send(urlDatabase);
 });
 
-//Edit the longURL of a selected shortURL
-app.post('/urls/:shortURL', (req, res) => {
-  const shortURL = req.params.shortURL
-  urlDatabase[shortURL] = req.body.updatedLongURL;
-  res.redirect(`/urls`);
+app.get('/register', (req, res) => {
+  //console.log(req.body);
+  const regUser = getUser(users, req.cookies.user_id);
+  const templateVar = {users, regUser};
+  res.render('urls_register', templateVar);
 });
+
+app.get('/login', (req, res) => {
+  const regUser = getUser(users, req.cookies.user_id);
+  const templateVar = {users, regUser};
+  res.render('urls_login', templateVar);
+});
+
 
 //Render the urls_index view at '/urls'
 app.get('/urls', (req, res) => {
-  const templateVar = {urls: urlDatabase, username: req.cookies["username"]};
+  const regUser = getUser(users, req.cookies.user_id);
+  const templateVar = {urls: urlDatabase, regUser};
+  console.log(regUser)
   res.render('urls_index', templateVar);
 });
 
 //Render the urls_new view at '/urls/new'
 app.get('/urls/new', (req, res) => {
-  const templateVar = {username: req.cookies["username"]};
+  const templateVar = {users};
   res.render('urls_new', templateVar);
-});
-
-//Create a new shortURL: longURL property for urlDatabase
-app.post('/urls', (req, res) => {
-  const shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;
-  res.redirect(`/urls/${shortURL}`);
-});
-
-//Delete an existing shortURL: longURL property from urlDatabase
-app.post('/urls/:shortURL/delete', (req, res) => {
-  delete urlDatabase[req.params.shortURL];
-  res.redirect('/urls');
 });
 
 //Navigate to the website usig longURL from '/u/:shortURL'
@@ -76,7 +82,7 @@ app.get("/u/:shortURL", (req, res) => {
 
 //Render the urls_show view at '/urls:shortURL'
 app.get('/urls/:shortURL', (req, res) => {
-  const templateVar = {shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], username: req.cookies["username"]};
+  const templateVar = {shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], users};
   res.render('urls_show', templateVar);
 });
 
@@ -85,24 +91,73 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
-// app.get('/login', (req, res) => {
-//   const templateVar = {username: req.body.username};
-//   res.render('urls_index', templateVar);
-// })
+//Print to console once connection with client is established
+app.listen(PORT, () => {
+  console.log(`Example app listening on port ${PORT}`);
+});
+
+//////////////////////////////POST METHODS//////////////////////////////////////
+
+
+//Create a new shortURL: longURL property for urlDatabase
+app.post('/urls', (req, res) => {
+  const shortURL = generateRandomString();
+  urlDatabase[shortURL] = req.body.longURL;
+  res.redirect(`/urls/${shortURL}`);
+});
+
+//Edit the longURL of a selected shortURL
+app.post('/urls/:shortURL', (req, res) => {
+  const shortURL = req.params.shortURL
+  urlDatabase[shortURL] = req.body.updatedLongURL;
+  res.redirect(`/urls`);
+});
 
 //POST to handle log in
 app.post('/login', (req, res) => {
-  res.cookie('username', req.body.username);
-  res.redirect('/urls');
+  const authenticateEmail = authenticateUser(users, req.body.email);
+  const authenticatePassword = authenticatePass(users, req.body.password);
+  if (authenticateEmail.user) {
+    if (authenticatePassword.user){
+      res.cookie('user_id', authenticatePassword.user_id);
+      res.redirect('/urls');
+    } else {
+      res.status(403).send(authenticatePassword.error);
+    }
+  } else {
+    res.status(403).send(authenticateEmail.error);
+  }
 });
 
 //POST to handle log out
 app.post('/logout', (req, res) => {
-  res.clearCookie('username');
-  res.redirect('/urls');
+  res.clearCookie('user_id');
+  res.redirect('/login');
 });
 
-//Print to console once connection with client is established
-app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}`);
+app.post('/register', (req, res) => {
+  console.log(req.body)
+  if (req.body.email !== '' && req.body.password !== '') {
+    const authenticate = authenticateUser(users, req.body.email);
+    if (authenticate.user) {
+      res.status(400).send(`400 error: User already exists, please login`);
+    } else {
+      const userId = generateRandomString();
+      users[userId] = {
+        id: 'id0' + Math.floor(Math.random()*10),
+        email: req.body.email,
+        password: req.body.password
+      };
+      res.cookie('user_id', userId);
+      res.redirect('/login');
+    }
+  } else {
+    res.status(400).send(`400 error: Invalid email and password`);
+  }
+});
+
+//Delete an existing shortURL: longURL property from urlDatabase
+app.post('/urls/:shortURL/delete', (req, res) => {
+  delete urlDatabase[req.params.shortURL];
+  res.redirect('/urls');
 });
