@@ -22,10 +22,10 @@
         </tr>
       </thead>
       <tbody>
-        <% for(let url in urls) { %>
+        <% for(let url in userUrl) { %>
           <tr>
             <td><%= url %></td>
-            <td><%= urls[url] %></td>
+            <td><%= userUrl[url] %></td>
             <form method="POST" action="/urls/<%= url %>/delete">
               <td>
                 <button type="submit" class="btn btn-outline-danger">

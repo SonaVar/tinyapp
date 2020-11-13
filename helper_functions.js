@@ -4,19 +4,9 @@ function generateRandomString() {
   return r;
 };
 
-
-function getUser(userDb, userId) {
-  for (let user in userDb) {
-    if (user === userId) {
-      return {error: null, user: userDb[user]};
-    }
-  }
-  return {error: 'email', user: null};
-};
-
 function authenticateUser(userDb, userEmail) {
   for (let user in userDb) {
-    if (userDb[user].email === userEmail /*&& userDb[user].password === userPass*/) {
+    if (userDb[user].email === userEmail) {
       return {error: null, user: userDb[user]};
     }
   }
@@ -32,9 +22,20 @@ function authenticatePass(userDb, userPass) {
   return {error: 'Invalid password. Try again.', user: null};
 };
 
+function urlsForUser(urlDb, id) {
+  let urlObj = {};
+  for (let url in urlDb) {
+    if (urlDb[url].userID === id) {
+      urlObj[url] = urlDb[url].longURL;
+    }
+  }
+  return urlObj;
+};
+
+
 module.exports = {
   generateRandomString,
-  getUser,
   authenticateUser,
-  authenticatePass
+  authenticatePass,
+  urlsForUser
 }

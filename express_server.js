@@ -1,21 +1,20 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
-const {generateRandomString, getUser, authenticateUser, authenticatePass} = require('./helper_functions');
+const {generateRandomString, authenticateUser, authenticatePass, urlsForUser} = require('./helper_functions');
 const app = express();
 app.use(cookieParser());
 const PORT = 8080;
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "id01" },
+  i3BoGr: { longURL: "https://www.google.ca", userID: "id02" }
 };
-
 const users = { 
-  "jack": {
+  "id01": {
     id: "id01", 
     email: "Jack@example.com", 
     password: "purple-monkey-dinosaur"
   },
- "jill": {
+ "id02": {
     id: "id02", 
     email: "Jill@example.com", 
     password: "dishwasher-funk"
@@ -47,42 +46,53 @@ app.get('/urls.json', (req, res) => {
 });
 
 app.get('/register', (req, res) => {
-  //console.log(req.body);
-  const regUser = getUser(users, req.cookies.user_id);
-  const templateVar = {users, regUser};
+  const regUser = users;
+  const templateVar = {regUser};
   res.render('urls_register', templateVar);
 });
 
 app.get('/login', (req, res) => {
-  const regUser = getUser(users, req.cookies.user_id);
-  const templateVar = {users, regUser};
+  const regUser = users;
+  const templateVar = {regUser};
   res.render('urls_login', templateVar);
 });
 
 
 //Render the urls_index view at '/urls'
 app.get('/urls', (req, res) => {
-  const regUser = getUser(users, req.cookies.user_id);
-  const templateVar = {urls: urlDatabase, regUser};
-  console.log(regUser)
+  const userID = req.cookies.user_id
+  const regUser = users[userID];
+  if (!regUser) {
+    res.status(302).send('Please login or register.')
+    return;
+  }
+  const userUrl = urlsForUser(urlDatabase, userID);
+  const templateVar = {userUrl, regUser};
+  console.log(userUrl)
   res.render('urls_index', templateVar);
 });
 
 //Render the urls_new view at '/urls/new'
 app.get('/urls/new', (req, res) => {
-  const templateVar = {users};
-  res.render('urls_new', templateVar);
+  const userID = req.cookies.user_id
+  const regUser = users[userID];
+  if (!regUser) {
+    res.redirect('/login');
+  } else {
+    const templateVar = {users, regUser};
+    res.render('urls_new', templateVar);
+  }
 });
 
 //Navigate to the website usig longURL from '/u/:shortURL'
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
+  const longURL = urlDatabase[req.params.shortURL].longURL;
   res.redirect(longURL);
 });
 
 //Render the urls_show view at '/urls:shortURL'
 app.get('/urls/:shortURL', (req, res) => {
-  const templateVar = {shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], users};
+  const templateVar = {shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, users};
   res.render('urls_show', templateVar);
 });
 
@@ -136,7 +146,6 @@ app.post('/logout', (req, res) => {
 });
 
 app.post('/register', (req, res) => {
-  console.log(req.body)
   if (req.body.email !== '' && req.body.password !== '') {
     const authenticate = authenticateUser(users, req.body.email);
     if (authenticate.user) {
