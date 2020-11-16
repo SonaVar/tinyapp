@@ -116,15 +116,12 @@ app.get('/urls/:shortURL', (req, res) => {
 //if URL for the given ID exists, redirects to the corresponding long URL
 //if URL for the given ID does not exist, returns HTML with a relevant error message
 app.get("/u/:shortURL", (req, res) => {
-  const shortURL = req.params.shortURL;
-  const long = urlDatabase[shortURL].longURL;
-  const userID = req.session['user_id'];
-  const regUser = users[userID];
-  if (!long || !regUser) {
+  const long = urlDatabase[req.params.shortURL].longURL;
+  if (!long) {
     res.status(404).send('ERROR 404: Page not Found');
     return;
   }
-  res.redirect(`http://${long}`);
+  res.redirect(long);
 });
 
 
